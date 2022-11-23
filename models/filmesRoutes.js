@@ -14,7 +14,18 @@ const userSchema = new Schema({
     required: [true, "Senha não informada"],
     trim: true,
     select: false,
+    validate:{
+      validator :function(valor){
+        return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(valor);
+      },
+      message: 'Senha nao tem carater especial e letra maisucula'
+    }
   },
+});
+userSchema.pre('save', (next) =>{
+  const hash =bcrypt.hashSync(this.password,8);
+  this.password = hash;
+  next();
 });
 
 module.exports = mongoose.model("User", userSchema);

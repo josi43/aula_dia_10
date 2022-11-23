@@ -1,10 +1,9 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const User = require("../models/userModel");
+const User = require("../models/filmesRoutes");
 
 async function registrar(req, res) {
   const user = new User(req.body);
-  user.password = await bcrypt.hashSync(user.password, 8);
   await user
     .save()
     .then((doc) => {
@@ -21,7 +20,6 @@ async function registrar(req, res) {
       if (error.code == 11000) {
         msg["erro"] = "Email já registrado";
       }
-      console.log(error);
       return res.status(422).json(msg);
     });
 }
