@@ -7,7 +7,7 @@ router.get('/', (req, res, next) => {
     res.json("testando")
 })
 
-router.post("/teste", controller.registrar);
+router.post("/cadastrar", controller.registrar);
 router.post("/login", controller.login);
 
 module.exports = router;

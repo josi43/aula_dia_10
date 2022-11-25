@@ -1,49 +1,71 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/filmesRoutes");
+const config = require("../config/env.json");
+
 
 async function registrar(req, res) {
-  const user = new User(req.body);
-  await user
-    .save()
-    .then((doc) => {
-      doc.password = undefined;
-      return res.status(201).json(doc);
-    })
-    .catch((error) => {
-      const msg = {};
-      if (error.errors) {
-        Object.values(error.errors).forEach(({ properties }) => {
-          msg[properties.path] = properties.message;
-        });
-      }
-      if (error.code == 11000) {
-        msg["erro"] = "Email já registrado";
-      }
-      return res.status(422).json(msg);
-    });
+  const {email, password} = req.body
+  if(!email){
+    res.status(422).json({msg:"Email obrigratorio"})
+  }
+  if(!password){
+    res.status(422).json({msg:"senha obrigratorio"})
+  }
+  const userExists = await User.findOne({email:email})
+  if(userExists){
+    return res.status(422).json({msg:"usuario ja cadastrado, por favor mude o email!"})
+  }
+  const salt = await bcrypt.genSalt(12)
+  const passwordHash = await bcrypt.hash(password, salt)
+
+  const user = new User({
+    email,
+    password: passwordHash,
+  });
+
+  try{
+    await user.save()
+    res.status(201).json({msg:"Usuario cadastrado com sucesso!"})
+  } catch(error){
+    console.log(error)
+    res.status(500).json({msg:"algum erro interno"})
+  }
 }
 
 async function login(req, res) {
   const { email, password } = req.body;
-  await User.findOne({ email: email })
-    .select(" password")
-    .then((doc) => {
-      if (!doc) {
-        return res.status(404).json({ erro: "Usuário não cadastrado" });
-      }
-      const autentica = bcrypt.compareSync(password, doc.password);
-      if (!autentica) {
-        return res.status(400).json({ erro: "Senha inválida" });
-      }
-      const token = jwt.sign({ id: doc._id }, config.segredo, {
-        expiresIn: "1d",
-      });
-      return res.json({ email: email, token: "abcd" });
-    })
-    .catch((error) => {
-      return res.status(500).json(error);
-    });
+  if(!email){
+    return res.status(422).json({msg:"Email obrigratorio"})
+  }
+  if(!password){
+    return res.status(422).json({msg:"senha obrigratorio"})
+  }
+  const user = await User.findOne({email:email})
+  
+  if(!user){
+    return res.status(422).json({msg:"usuario nao encontrado!"})
+  }
+  const checkPassword = await bcrypt.compare(password, user.password)
+  
+  if(!checkPassword){
+    return res.status(422).json({msg:"senha invalida"})
+  }
+
+  try{
+    const secret = config.secret
+
+    const token = jwt.sign({
+      id:user._id,
+    },
+    secret,)
+    
+    res.status(200).json({msg:"logado com sucesso ", token})
+
+  } catch(err) {
+    console.log(err)
+    res.status(500).json({msg:"algum erro interno"})
+  }
 }
 
 module.exports = { registrar, login };
